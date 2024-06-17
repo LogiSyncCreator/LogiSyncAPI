@@ -18,7 +18,7 @@ struct CreateUser: AsyncMigration {
             .field("user_pass", .string, .required)
             .field("phone", .string, .required)
             .field("profile", .string, .required)
-            .field("delete", .string, .required)
+            .field("delete", .bool, .required)
             .create()
     }
 
