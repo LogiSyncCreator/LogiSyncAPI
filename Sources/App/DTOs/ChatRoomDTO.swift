@@ -6,3 +6,24 @@
 //
 
 import Foundation
+import Fluent
+import Vapor
+
+struct ChatRoomDTO: Content {
+    var id: UUID?
+    var roomId: String?
+    var userId: String?
+    
+    func toModel() -> ChatRoom {
+        let model = ChatRoom()
+        
+        model.id = self.id
+        if let roomId = self.roomId,
+           let userId = self.userId {
+            model.roomId = roomId
+            model.userId = userId
+        }
+        
+        return model
+    }
+}
