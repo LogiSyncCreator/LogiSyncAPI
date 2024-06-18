@@ -45,12 +45,12 @@ final class Matching: Model, @unchecked Sendable {
     func toDTO() -> MatchingDTO {
         .init(
             id: self.id,
-            manager: self.manager,
-            shipper: self.shipper,
-            driver: self.driver,
+            manager: self.$manager.value,
+            shipper: self.$shipper.value,
+            driver: self.$driver.value,
             start: self.start,
-            address: self.address,
-            delete: self.delete
+            address: self.$address.value,
+            delete: self.$delete.value
         )
     }
 }
