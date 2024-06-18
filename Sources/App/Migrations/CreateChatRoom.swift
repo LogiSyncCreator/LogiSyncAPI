@@ -14,6 +14,7 @@ struct CreateChatRoom: AsyncMigration {
             .id()
             .field("room_id", .string, .required)
             .field("user_id", .string, .required)
+            .field("mention", .bool, .required)
             .create()
     }
 

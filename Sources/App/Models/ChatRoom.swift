@@ -18,22 +18,26 @@ final class ChatRoom: Model, @unchecked Sendable {
     var roomId: String
     @Field(key: "user_id")
     var userId: String
+    @Field(key: "mention")
+    var mention: Bool
     
     init() {
         
     }
     
-    init(id: UUID? = nil, roomId: String, userId: String) {
+    init(id: UUID? = nil, roomId: String, userId: String, mention: Bool) {
         self.id = id
         self.roomId = roomId
         self.userId = userId
+        self.mention = mention
     }
     
     func toDTO() -> ChatRoomDTO {
         .init(
             id: self.id,
             roomId: self.$roomId.value,
-            userId: self.$userId.value
+            userId: self.$userId.value,
+            mention: self.$mention.value
         )
     }
     

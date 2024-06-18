@@ -13,15 +13,18 @@ struct ChatRoomDTO: Content {
     var id: UUID?
     var roomId: String?
     var userId: String?
+    var mention: Bool?
     
     func toModel() -> ChatRoom {
         let model = ChatRoom()
         
         model.id = self.id
         if let roomId = self.roomId,
-           let userId = self.userId {
+           let userId = self.userId,
+           let mention = self.mention {
             model.roomId = roomId
             model.userId = userId
+            model.mention = mention
         }
         
         return model
