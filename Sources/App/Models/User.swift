@@ -28,7 +28,7 @@ final class User: Model, @unchecked Sendable {
     var phone: String
     @Field(key: "profile")
     var profile: String
-    @Field(key: "dalete")
+    @Field(key: "delete")
     var delete: Bool
 
     init() { }
