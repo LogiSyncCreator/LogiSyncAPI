@@ -52,3 +52,23 @@ http://127.0.0.1:8080/accounts/delete/{userID}
 DELETEで送信し
 IDが一致するユーザのDeleteフラグを反転する
 現状はログインができなくなる
+
+
+# Thumbnails
+http://127.0.0.1:8080/thumbnail/
+
+## create
+http://127.0.0.1:8080/thumbnail/create
+{
+    "userId": "testAccount",
+    "thumbnail": "http://example.com",
+    "delete": false
+}
+仕様
+POSTで送信し、インサートする
+
+## getThumb
+http://127.0.0.1:8080/thumbnails/getThumb/{userID}
+仕様
+GETで送信
+対応するIDのサムネイルURLを取得
