@@ -34,3 +34,8 @@ JSON
 仕様
 POSTで送信し、インサートする
 
+## Serch ID
+http://127.0.0.1:8080/accounts/serchid/{userID}
+仕様
+GETで送信し
+IDが存在でtrue/falseを返す

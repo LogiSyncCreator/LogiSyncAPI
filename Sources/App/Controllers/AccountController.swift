@@ -14,12 +14,24 @@ struct AccountController: RouteCollection {
         let accounts = routes.grouped("accounts")
         accounts.post("regist", use: self.register)
         accounts.post("login", use: self.login)
+        accounts.get("serchid", ":userID", use: self.serchId)
         accounts.get(use: self.index)
     }
     
     @Sendable
     func index(req: Request) async throws -> [UserDTO] {
         try await User.query(on: req.db).all().map { $0.toDTO() }
+    }
+    
+    @Sendable
+    func serchId(req: Request) async throws -> Bool {
+        
+        let id = req.parameters.get("userID") ?? ""
+        
+        guard let user = try await User.query(on: req.db).filter(\.$userId == id).first() else {
+            return false
+        }
+        return true
     }
     
     @Sendable
