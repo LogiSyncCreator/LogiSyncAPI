@@ -13,7 +13,7 @@ struct AccountController: RouteCollection {
     func boot(routes: any Vapor.RoutesBuilder) throws {
         let accounts = routes.grouped("accounts")
         accounts.post("regist", use: self.register)
-        accounts.post(use: self.login)
+        accounts.post("login", use: self.login)
         accounts.get(use: self.index)
     }
     
