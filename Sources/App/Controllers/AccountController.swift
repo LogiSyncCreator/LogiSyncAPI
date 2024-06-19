@@ -15,7 +15,8 @@ struct AccountController: RouteCollection {
         accounts.post("regist", use: self.register)
         accounts.post("login", use: self.login)
         accounts.get("serchid", ":userID", use: self.serchId)
-        accounts.get(use: self.index)
+        accounts.get("serchuser",":userID", use: self.getUser)
+//        accounts.get(use: self.index)
     }
     
     @Sendable
