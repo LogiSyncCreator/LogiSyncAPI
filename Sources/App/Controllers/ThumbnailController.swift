@@ -16,9 +16,7 @@ struct ThumbnailController: RouteCollection {
         thum.get(use: self.index)
         thum.post("regist",use: self.regist)
         thum.get("getThumb",":userID", use: self.getThumbnail)
-        thum.group(":todoID") { todo in
-            todo.delete(use: self.delete)
-        }
+        thum.delete("delete",":userID", use: self.delete)
     }
 
     @Sendable
@@ -55,11 +53,12 @@ struct ThumbnailController: RouteCollection {
 
     @Sendable
     func delete(req: Request) async throws -> HTTPStatus {
-        guard let todo = try await Todo.find(req.parameters.get("todoID"), on: req.db) else {
-            throw Abort(.notFound)
+        guard let userId = req.parameters.get("userID" as String) else {
+            throw Abort(.badRequest, reason: "Invalid or missing user ID")
         }
-
-        try await todo.delete(on: req.db)
+        
+        try await Thumbnail.query(on: req.db).set(\.$delete, to: true).filter(\.$userId == userId).update()
+        
         return .noContent
     }
 }

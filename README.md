@@ -57,7 +57,7 @@ IDが一致するユーザのDeleteフラグを反転する
 # Thumbnails
 http://127.0.0.1:8080/thumbnail/
 
-## create
+## regist
 http://127.0.0.1:8080/thumbnail/create
 {
     "userId": "testAccount",
@@ -72,3 +72,9 @@ http://127.0.0.1:8080/thumbnails/getThumb/{userID}
 仕様
 GETで送信
 対応するIDのサムネイルURLを取得
+
+## delete
+http://127.0.0.1:8080/thumbnails/delete/{userID}
+仕様
+DELETEで送信し
+IDが一致するユーザのDeleteフラグを反転する
