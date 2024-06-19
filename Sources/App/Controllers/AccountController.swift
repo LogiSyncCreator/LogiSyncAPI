@@ -59,6 +59,16 @@ struct AccountController: RouteCollection {
     func register(req: Request) async throws -> HTTPStatus {
         var user = try req.content.decode(UserDTO.self)
         var passwordHash = ""
+        
+        // 既存ユーザーIDの検索
+        if let userId = user.userId {
+            let query = try await User.query(on: req.db).filter(\.$userId == userId).first()
+            if let query = query {
+                // 存在すればバッドリクエスト
+                return .badRequest
+            }
+        }
+        
         if let userPass = user.pass {
             passwordHash = try Bcrypt.hash(userPass)
         } else {
