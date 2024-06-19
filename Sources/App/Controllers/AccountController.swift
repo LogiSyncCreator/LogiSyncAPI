@@ -34,6 +34,19 @@ struct AccountController: RouteCollection {
         return true
     }
     
+    @Sendable 
+    func getUser(req: Request) async throws -> GetUserDTO {
+        guard let userId = req.parameters.get("userID" as String) else {
+            throw Abort(.badRequest, reason: "Invalid or missing user ID")
+        }
+        
+        guard let user = try await User.query(on: req.db).filter(\.$userId == userId).first() else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+        
+        return user.toGetUserDTO()
+    }
+    
     @Sendable
     func create(req: Request) async throws -> UserDTO {
         let user = try req.content.decode(UserDTO.self).toModel()

@@ -39,3 +39,9 @@ http://127.0.0.1:8080/accounts/serchid/{userID}
 仕様
 GETで送信し
 IDが存在でtrue/falseを返す
+
+## SerchUser
+http://127.0.0.1:8080/accounts/serchuser/{userID}
+仕様
+GETで送信し
+IDが一致するユーザーのデータを表示
