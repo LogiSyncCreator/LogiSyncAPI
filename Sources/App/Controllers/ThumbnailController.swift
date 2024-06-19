@@ -31,6 +31,7 @@ struct ThumbnailController: RouteCollection {
         guard let userId = req.parameters.get("userID" as String) else {
             throw Abort(.badRequest, reason: "Invalid or missing user ID")
         }
+        
         guard let thumb = try await Thumbnail.query(on: req.db).filter(\.$userId == userId).first() else {
             throw Abort(.notFound, reason: "User not found")
         }
@@ -40,6 +41,13 @@ struct ThumbnailController: RouteCollection {
     @Sendable
     func regist(req: Request) async throws -> ThumbnailDTO {
         let thum = try req.content.decode(ThumbnailDTO.self).toModel()
+        
+        // 既存ユーザーIDの検索
+        let query = try await Thumbnail.query(on: req.db).filter(\.$userId == thum.userId).first()
+        if query != nil {
+            // 存在すれば更新する
+            try await Thumbnail.query(on: req.db).set(\.$delete, to: true).filter(\.$userId == thum.userId).update()
+        }
 
         try await thum.save(on: req.db)
         return thum.toDTO()
