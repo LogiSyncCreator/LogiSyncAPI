@@ -45,3 +45,10 @@ http://127.0.0.1:8080/accounts/serchuser/{userID}
 仕様
 GETで送信し
 IDが一致するユーザーのデータを表示
+
+## DELETE
+http://127.0.0.1:8080/accounts/delete/{userID}
+仕様
+DELETEで送信し
+IDが一致するユーザのDeleteフラグを反転する
+現状はログインができなくなる

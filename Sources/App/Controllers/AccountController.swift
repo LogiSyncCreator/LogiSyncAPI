@@ -14,6 +14,7 @@ struct AccountController: RouteCollection {
         let accounts = routes.grouped("accounts")
         accounts.post("regist", use: self.register)
         accounts.post("login", use: self.login)
+        accounts.delete("delete", ":userID", use: self.delete)
         accounts.get("serchid", ":userID", use: self.serchId)
         accounts.get("serchuser",":userID", use: self.getUser)
 //        accounts.get(use: self.index)
@@ -29,7 +30,7 @@ struct AccountController: RouteCollection {
         
         let id = req.parameters.get("userID") ?? ""
         
-        guard let user = try await User.query(on: req.db).filter(\.$userId == id).first() else {
+        guard (try await User.query(on: req.db).filter(\.$userId == id).first()) != nil else {
             return false
         }
         return true
@@ -59,12 +60,20 @@ struct AccountController: RouteCollection {
     
     @Sendable
     func delete(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else {
-            throw Abort(.notFound)
+        guard let userID = req.parameters.get("userID", as: String.self) else {
+            throw Abort(.badRequest, reason: "Invalid or missing user ID")
         }
+        
+        guard let user = try await User.query(on: req.db).filter(\.$userId == userID).first() else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+        
+        try await User.query(on: req.db)
+            .set(\.$delete, to: !user.delete)
+            .filter(\.$userId == userID)
+            .update()
 
-        try await user.delete(on: req.db)
-        return .noContent
+        return .ok
     }
     
     @Sendable
@@ -73,6 +82,10 @@ struct AccountController: RouteCollection {
         let res = try await User.query(on: req.db)
             .filter(\.$userId == userLogin.username)
             .first()
+        
+        if let userDelete = res?.delete {
+            if userDelete { throw Abort(.badRequest) }
+        }
         
         if let user = res, try Bcrypt.verify(userLogin.password, created: user.pass) {
             return user.toDTO()
@@ -89,7 +102,7 @@ struct AccountController: RouteCollection {
         // 既存ユーザーIDの検索
         if let userId = user.userId {
             let query = try await User.query(on: req.db).filter(\.$userId == userId).first()
-            if let query = query {
+            if query != nil {
                 // 存在すればバッドリクエスト
                 return .badRequest
             }
