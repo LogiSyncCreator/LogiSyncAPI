@@ -30,7 +30,7 @@ struct ThumbnailController: RouteCollection {
             throw Abort(.badRequest, reason: "Invalid or missing user ID")
         }
         
-        guard let thumb = try await Thumbnail.query(on: req.db).filter(\.$userId == userId).first() else {
+        guard let thumb = try await Thumbnail.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first() else {
             throw Abort(.notFound, reason: "User not found")
         }
         return thumb.thumbnail

@@ -42,7 +42,7 @@ struct AccountController: RouteCollection {
             throw Abort(.badRequest, reason: "Invalid or missing user ID")
         }
         
-        guard let user = try await User.query(on: req.db).filter(\.$userId == userId).first() else {
+        guard let user = try await User.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first() else {
             throw Abort(.notFound, reason: "User not found")
         }
         
@@ -81,6 +81,7 @@ struct AccountController: RouteCollection {
         let userLogin = try req.content.decode(UserLogin.self)
         let res = try await User.query(on: req.db)
             .filter(\.$userId == userLogin.username)
+            .filter(\.$delete == false)
             .first()
         
         if let userDelete = res?.delete {

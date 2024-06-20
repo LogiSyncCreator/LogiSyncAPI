@@ -78,3 +78,30 @@ http://127.0.0.1:8080/thumbnails/delete/{userID}
 仕様
 DELETEで送信し
 IDが一致するユーザのDeleteフラグをTrueにする
+
+# Status
+http://127.0.0.1:8080/status/
+## post
+customStatusの新規登録
+{
+  "manager": "testMan",
+  "shipper": "testShip",
+  "name": "試運転",
+  "delete": false
+}
+## delete
+http://127.0.0.1:8080/status/{userID}
+customStatusの論理削除
+## nowstatus
+http://127.0.0.1:8080/status/nowstatus/{userID}
+仕様
+GETで送信
+対応するIDのステータスを取得
+ID:status
+## ステータスの更新
+ws://127.0.0.1:8080/status/now/{userID}
+仕様
+WebSocketに対して投げたID先のステータスを更新する
+## グループ間で登録したカスタムステータスの取得
+http://127.0.0.1:8080/status/groupstatus/{管理者ID}/{荷主ID}
+マッチングが合えば登録されたものを呼び寄せる
