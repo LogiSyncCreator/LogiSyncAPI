@@ -15,7 +15,7 @@ struct MatchingDTO: Content {
     var shipper: String?
     var driver: String?
     var start: Date?
-    var address: String?
+    var address: String?    // 目的地
     var delete: Bool?
     
     func toModel() -> Matching {
