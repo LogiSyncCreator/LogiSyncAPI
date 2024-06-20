@@ -102,8 +102,6 @@ struct StatusController: RouteCollection {
     @Sendable
     func getGroupStatus(req: Request) async throws -> [CustomStatusDTO] {
         
-        print("Hey! guys.")
-        
         guard let manager = req.parameters.get("manId"),
               let shipper = req.parameters.get("shipId")
                else {
