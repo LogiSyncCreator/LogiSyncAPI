@@ -24,7 +24,7 @@ final class Matching: Model, @unchecked Sendable {
     @Timestamp(key: "start_date", on: .create)
     var start: Date?
     @Field(key: "address")
-    var address: String
+    var address: String     // 目的地
     @Field(key: "delete")
     var delete: Bool
     

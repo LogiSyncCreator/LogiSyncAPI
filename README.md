@@ -105,3 +105,26 @@ WebSocketに対して投げたID先のステータスを更新する
 ## グループ間で登録したカスタムステータスの取得
 http://127.0.0.1:8080/status/groupstatus/{管理者ID}/{荷主ID}
 マッチングが合えば登録されたものを呼び寄せる
+
+# Matching
+http://127.0.0.1:8080/matching
+## POST
+{
+"manager": "id",
+"shipper": "id",
+"driver": "id",
+"address": "到着住所",
+"delete": false
+}
+## 解除
+http://127.0.0.1:8080/matching/cancel/{uuid}
+マッチング先のuuidでマッチングを論理的に解除
+
+## マッチング検索
+http://127.0.0.1:8080/matching/group
+{
+  "manager": "id",
+  "driver": "id",
+  "shipper": "id"
+}
+いずれか一つに一致するIDのマッチングを表示
