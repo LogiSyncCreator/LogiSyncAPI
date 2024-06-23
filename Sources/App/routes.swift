@@ -15,4 +15,5 @@ func routes(_ app: Application) throws {
     try app.register(collection: ThumbnailController())
     try app.register(collection: StatusController())
     try app.register(collection: MatchingController())
+    try app.register(collection: DeviceTokenController())
 }

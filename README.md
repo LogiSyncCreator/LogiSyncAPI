@@ -128,3 +128,20 @@ http://127.0.0.1:8080/matching/group
   "shipper": "id"
 }
 いずれか一つに一致するIDのマッチングを表示
+
+# token
+http://127.0.0.1:8080/token
+仕様
+GET 全件数取り寄せ
+## 登録
+http://127.0.0.1:8080/token
+{
+  "userId": "ユーザID",
+  "token":  "トークン"
+}
+仕様
+POST jsonの値を登録
+## 検索
+http://127.0.0.1:8080/token/{ユーザID}
+仕様
+GET 任意のユーザのトークンと更新日を取得
