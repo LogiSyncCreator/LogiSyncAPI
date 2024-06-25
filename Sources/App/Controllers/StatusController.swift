@@ -17,8 +17,10 @@ struct StatusController: RouteCollection {
         status.get(use: self.index)
         status.post(use: self.regist)
         status.delete(":id", use: self.delete)
+        status.get("setStatus",":id",":msg", use: self.statusUpdate)
         status.get("nowstatus",":id", use: self.getNowStatus)
         status.get("groupstatus", ":manId", ":shipId", use: self.getGroupStatus)
+        status.get("searchStatus", ":userId", use: self.getSearchUserStatus)
         status.webSocket("now", ":id") { req, ws in
             ws.onText { ws, st in
                         Task {
@@ -65,6 +67,35 @@ struct StatusController: RouteCollection {
         
     }
     
+    @Sendable
+    func statusUpdate(req: Request) async throws -> NowStatusDTO {
+        
+        guard let userId = req.parameters.get("id") else {
+            throw Abort(.badRequest, reason: "Invalid or missing user ID")
+        }
+        
+        
+        guard let message = req.parameters.get("msg") else {
+            throw Abort(.badRequest, reason: "Invalid or missing msg")
+        }
+            
+        
+        let statusModel = NowStatus(userId: userId, name: message, delete: false)
+        
+        
+        // 既存ユーザーIDの検索
+        let existingStatus = try await NowStatus.query(on: req.db).filter(\.$userId == userId).all()
+        for model in existingStatus {
+            // 存在すれば更新する
+            model.delete = true
+            try await model.save(on: req.db)
+        }
+
+        try await statusModel.save(on: req.db)
+        
+        return statusModel.toDTO()
+    }
+    
     // nowStatusUpdate
     func nowStatusUpdate(req: Request, ws: WebSocket, message: String) async throws {
         guard let userId = req.parameters.get("id") else {
@@ -99,6 +130,23 @@ struct StatusController: RouteCollection {
         
     }
     
+    // ユーザーのステータスとアイコンを検索
+    @Sendable
+    func getSearchUserStatus(req: Request) async throws -> [CustomStatusDTO] {
+        guard let userId = req.parameters.get("userId") else {
+            throw Abort(.badRequest)
+        }
+        
+        let status = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first()
+        
+        if let status = status {
+            let data = try await CustomStatus.query(on: req.db).filter(\.$name == status.name).all()
+            return data.map { $0.toDTO() }
+        } else {
+            throw Abort(.badRequest)
+        }
+    }
+    
     @Sendable
     func getGroupStatus(req: Request) async throws -> [CustomStatusDTO] {
         
@@ -106,6 +154,15 @@ struct StatusController: RouteCollection {
               let shipper = req.parameters.get("shipId")
                else {
             throw Abort(.badRequest, reason: "Invalid or missing id ")
+        }
+        
+        if manager == "all" {
+            do {
+                let groupStatus = try await CustomStatus.query(on: req.db).filter(\.$manager == "all").filter(\.$manager == manager).filter(\.$shipper == shipper).all()
+                return groupStatus.map { $0.toDTO() }
+            } catch {
+                throw Abort(.badRequest, reason: "Invalid or miss match id")
+            }
         }
         
         do {

@@ -74,7 +74,7 @@ struct MatchingController: RouteCollection {
                 orGroup.filter(\.$manager == matching.manager)
                     .filter(\.$driver == matching.driver)
                     .filter(\.$shipper == matching.shipper)
-            }
+            }.sort(\.$start)
             .all().map {
                 $0.toDTO()
             }

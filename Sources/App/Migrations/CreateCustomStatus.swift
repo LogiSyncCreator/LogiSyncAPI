@@ -15,6 +15,9 @@ struct CreateCustomStatus: AsyncMigration {
             .field("shipper_id", .string, .required)
             .field("name", .string, .required)
             .field("delete", .bool, .required)
+            .field("color", .string, .required)
+            .field("icon", .string, .required)
+            .field("index", .int)
             .create()
     }
 

@@ -114,7 +114,8 @@ http://127.0.0.1:8080/matching
 "shipper": "id",
 "driver": "id",
 "address": "到着住所",
-"delete": false
+"delete": false,
+"start": Date   // 開始時間　→ ソート用の値
 }
 ## 解除
 http://127.0.0.1:8080/matching/cancel/{uuid}
