@@ -28,18 +28,19 @@ final class Location: Model, @unchecked Sendable {
     var createAt: Date?
     @Field(key: "status")
     var status: String
+    @Field(key: "delete")
+    var delete: Bool
     
-    init() {
-        
-    }
-
-    init(id: UUID? = nil, userId: String, longitude: Double, latitude: Double, createAt: Date? = nil, status: String) {
+    init(){  }
+    
+    init(id: UUID? = nil, userId: String, longitude: Double, latitude: Double, createAt: Date? = nil, status: String, delete: Bool) {
         self.id = id
         self.userId = userId
         self.longitude = longitude
         self.latitude = latitude
         self.createAt = createAt
         self.status = status
+        self.delete = delete
     }
     
     func toDTO() -> LocationDTO {

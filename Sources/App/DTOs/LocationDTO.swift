@@ -15,6 +15,7 @@ struct LocationDTO: Content {
     var latitude: Double?
     var createAt: Date?
     var status: String?
+    var delete: Bool?
     
     func toModel() -> Location {
         let model = Location()
@@ -24,11 +25,13 @@ struct LocationDTO: Content {
         if let userId = self.userId,
            let longitude = self.longitude,
            let latitude = self.latitude,
-           let status = self.status {
+           let status = self.status,
+           let delete = self.delete {
             model.userId = userId
             model.longitude = longitude
             model.latitude = latitude
             model.status = status
+            model.delete = delete
         }
         return model
     }
