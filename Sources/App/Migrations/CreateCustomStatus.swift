@@ -19,6 +19,12 @@ struct CreateCustomStatus: AsyncMigration {
             .field("icon", .string, .required)
             .field("index", .int)
             .create()
+        
+        let onlieStatus = CustomStatus(manager: "all", shipper: "all", name: "オンライン", delete: false, color: "green", icon: "checkmark.circle.fill", index: 0)
+        let offlineStatus = CustomStatus(manager: "all", shipper: "all", name: "オフライン", delete: false, color: "gray", icon: "xmark.circle", index: 1)
+        
+        try await onlieStatus.save(on: database)
+        try await offlineStatus.save(on: database)
     }
 
     func revert(on database: Database) async throws {
