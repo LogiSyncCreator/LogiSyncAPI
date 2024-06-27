@@ -6,3 +6,8 @@
 //
 
 import Foundation
+
+struct EnvData {
+    let ip = "192.168.68.82"
+    let port = 8080
+}

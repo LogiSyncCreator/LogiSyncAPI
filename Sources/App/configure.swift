@@ -21,14 +21,14 @@ public func configure(_ app: Application) async throws {
     
     let key = KeyData().apnsKey
     
-    app.http.server.configuration.address = BindAddress.hostname("192.168.68.82", port: 8080)
+    app.http.server.configuration.address = BindAddress.hostname(EnvData().ip, port: EnvData().port)
 app.databases.use(DatabaseConfigurationFactory.sqlite(.file("db.sqlite")), as: .sqlite)
     
     let apnsConfig = APNSClientConfiguration(
         authenticationMethod: .jwt(
             privateKey: try .loadFrom(string: key),
-            keyIdentifier: "WA5C4K7823",
-            teamIdentifier: "WFCKBPMR9P"),
+            keyIdentifier: KeyData().keiId,
+            teamIdentifier: KeyData().teamId),
         environment: .sandbox
     )
     app.apns.containers.use(
