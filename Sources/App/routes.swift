@@ -1,4 +1,5 @@
 import Fluent
+import APNSCore
 import Vapor
 
 func routes(_ app: Application) throws {
@@ -15,4 +16,13 @@ func routes(_ app: Application) throws {
     try app.register(collection: ThumbnailController())
     try app.register(collection: StatusController())
     try app.register(collection: MatchingController())
+    try app.register(collection: DeviceTokenController())
+    try app.register(collection: LocationController())
+    try app.register(collection: PushController())
+}
+
+struct Payload: Codable {
+    var title: String
+    var body: String
+    var like: String
 }

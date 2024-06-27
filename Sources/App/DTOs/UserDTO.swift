@@ -45,3 +45,36 @@ struct UserDTO: Content {
         return model
     }
 }
+
+struct ResponseUserDTO: Content {
+    
+    var id: UUID?
+    var name: String?
+    var company: String?
+    var role: String?
+    var userId: String?
+    var phone: String?
+    var profile: String?
+    
+    func toModel() -> User {
+        let model = User()
+        
+        model.id = self.id
+        if let name = self.name,
+           let company = self.company,
+           let role = self.role,
+           let userId = self.userId,
+           let phone = self.phone,
+           let profile = self.profile
+        {
+            model.name = name
+            model.company = company
+            model.role = role
+            model.userId = userId
+            model.phone = phone
+            model.profile = profile
+        }
+        
+        return model
+    }
+}

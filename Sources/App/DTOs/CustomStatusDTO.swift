@@ -13,6 +13,9 @@ struct CustomStatusDTO: Content {
     var shipper: String?
     var name: String?
     var delete: Bool?
+    var color: String?
+    var icon: String?
+    var index: Int?
     
     func toModel() -> CustomStatus {
         let model = CustomStatus()
@@ -21,11 +24,17 @@ struct CustomStatusDTO: Content {
         if let manager = self.manager,
            let shipper = self.shipper,
            let name = self.name,
-           let delete = self.delete {
+           let delete = self.delete,
+           let icon = self.icon,
+           let color = self.color,
+           let index = self.index {
             model.manager = manager
             model.shipper = shipper
             model.name = name
             model.delete = delete
+            model.icon = icon
+            model.color = color
+            model.index = index
         }
         return model
     }

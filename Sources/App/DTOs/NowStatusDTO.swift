@@ -12,7 +12,7 @@ import Vapor
 struct NowStatusDTO: Content {
     var id: UUID?
     var userId: String?
-    var name: String?
+    var statusId: String?
     var createAt: Date?
     var delete: Bool?
     
@@ -22,10 +22,10 @@ struct NowStatusDTO: Content {
         model.id = self.id
         model.createAt = self.createAt
         if let userId = self.userId,
-           let name = self.name,
+           let statusId = self.statusId,
            let delete = self.delete {
             model.userId = userId
-            model.name = name
+            model.statusId = statusId
             model.delete = delete
         }
         return model

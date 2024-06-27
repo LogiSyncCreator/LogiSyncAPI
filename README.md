@@ -114,7 +114,8 @@ http://127.0.0.1:8080/matching
 "shipper": "id",
 "driver": "id",
 "address": "到着住所",
-"delete": false
+"delete": false,
+"start": Date   // 開始時間　→ ソート用の値
 }
 ## 解除
 http://127.0.0.1:8080/matching/cancel/{uuid}
@@ -128,3 +129,44 @@ http://127.0.0.1:8080/matching/group
   "shipper": "id"
 }
 いずれか一つに一致するIDのマッチングを表示
+
+# token
+http://127.0.0.1:8080/token
+仕様
+GET 全件数取り寄せ
+## 登録
+http://127.0.0.1:8080/token
+{
+  "userId": "ユーザID",
+  "token":  "トークン"
+}
+仕様
+POST jsonの値を登録
+## 検索
+http://127.0.0.1:8080/token/{ユーザID}
+仕様
+GET 任意のユーザのトークンと更新日を取得
+
+# Locations
+## 全数検索
+http://127.0.0.1:8080/locations
+仕様
+GET 全件数取り寄せ
+## 検索
+http://127.0.0.1:8080/locations/{ユーザID}
+仕様
+GET 任意のユーザの位置情報を取得
+## 登録
+http://127.0.0.1:8080/locations
+{
+  "userId": "testaccount",
+  "longitude": 0.01,
+  "latitude": 0.01,
+  "status": "テスト"
+}
+仕様
+POST jsonの値を登録
+## 削除
+http://127.0.0.1:8080/locations/{ユーザID}
+仕様
+DELETE 任意のユーザの位置情報を全件削除

@@ -22,15 +22,25 @@ final class CustomStatus: Model, @unchecked Sendable {
     var name: String
     @Field(key: "delete")
     var delete: Bool
+    @Field(key: "color")
+    var color: String
+    @Field(key: "icon")
+    var icon: String
+    @Field(key: "index")
+    var index: Int
+    init() {
+        
+    }
     
-    init() { }
-    
-    init(id: UUID? = nil, manager: String, shipper: String, name: String, delete: Bool) {
+    init(id: UUID? = nil, manager: String, shipper: String, name: String, delete: Bool, color: String, icon: String, index: Int) {
         self.id = id
         self.manager = manager
         self.shipper = shipper
         self.name = name
         self.delete = delete
+        self.color = color
+        self.icon = icon
+        self.index = index
     }
     
     func toDTO() -> CustomStatusDTO {
@@ -39,7 +49,10 @@ final class CustomStatus: Model, @unchecked Sendable {
             manager: self.$manager.value,
             shipper: self.$shipper.value,
             name: self.$name.value,
-            delete: self.$delete.value
+            delete: self.$delete.value,
+            color: self.$color.value,
+            icon: self.$icon.value,
+            index: self.$index.value
         )
     }
 }

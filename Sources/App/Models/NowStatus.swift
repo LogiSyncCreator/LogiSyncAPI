@@ -17,8 +17,8 @@ final class NowStatus: Model, @unchecked Sendable {
     
     @Field(key: "user_id")
     var userId: String
-    @Field(key: "status_name")
-    var name: String
+    @Field(key: "status_id")
+    var statusId: String
     @Timestamp(key: "update_at", on: .create)
     var createAt: Date?
     @Field(key: "delete")
@@ -28,10 +28,10 @@ final class NowStatus: Model, @unchecked Sendable {
         
     }
     
-    init(id: UUID? = nil, userId: String, name: String, createAt: Date? = nil, delete: Bool) {
+    init(id: UUID? = nil, userId: String, statusId: String, createAt: Date? = nil, delete: Bool) {
         self.id = id
         self.userId = userId
-        self.name = name
+        self.statusId = statusId
         self.createAt = createAt
         self.delete = delete
     }
@@ -40,7 +40,7 @@ final class NowStatus: Model, @unchecked Sendable {
         .init(
             id: self.id,
             userId: self.$userId.value,
-            name: self.$name.value,
+            statusId: self.$statusId.value,
             createAt: self.createAt,
             delete: self.$delete.value
         )

@@ -12,7 +12,7 @@ struct CreateNowStatus: AsyncMigration {
         try await database.schema("now_status")
             .id()
             .field("user_id", .string, .required)
-            .field("status_name", .string, .required)
+            .field("status_id", .string, .required)
             .field("update_at", .date, .required)
             .field("delete", .bool, .required)
             .create()
