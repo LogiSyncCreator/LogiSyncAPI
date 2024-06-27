@@ -17,21 +17,21 @@ struct StatusController: RouteCollection {
         status.get(use: self.index)
         status.post(use: self.regist)
         status.delete(":id", use: self.delete)
-        status.get("setStatus",":id",":msg", use: self.statusUpdate)
+        status.get("setStatus",":id",":statusId", use: self.statusUpdate)
         status.get("nowstatus",":id", use: self.getNowStatus)
         status.get("groupstatus", ":manId", ":shipId", use: self.getGroupStatus)
         status.get("searchStatus", ":userId", use: self.getSearchUserStatus)
-        status.webSocket("now", ":id") { req, ws in
-            ws.onText { ws, st in
-                        Task {
-                            do {
-                                try await nowStatusUpdate(req: req, ws: ws, message: st)
-                            } catch {
-                                print("Error: \(error)")
-                            }
-                        }
-                    }
-        }
+//        status.webSocket("now", ":id") { req, ws in
+//            ws.onText { ws, st in
+//                        Task {
+//                            do {
+//                                try await nowStatusUpdate(req: req, ws: ws, message: st)
+//                            } catch {
+//                                print("Error: \(error)")
+//                            }
+//                        }
+//                    }
+//        }
     }
 
     @Sendable
@@ -75,12 +75,12 @@ struct StatusController: RouteCollection {
         }
         
         
-        guard let message = req.parameters.get("msg") else {
+        guard let statusId = req.parameters.get("statusId") else {
             throw Abort(.badRequest, reason: "Invalid or missing msg")
         }
             
         
-        let statusModel = NowStatus(userId: userId, name: message, delete: false)
+        let statusModel = NowStatus(userId: userId, statusId: statusId, delete: false)
         
         
         // 既存ユーザーIDの検索
@@ -97,25 +97,25 @@ struct StatusController: RouteCollection {
     }
     
     // nowStatusUpdate
-    func nowStatusUpdate(req: Request, ws: WebSocket, message: String) async throws {
-        guard let userId = req.parameters.get("id") else {
-            throw Abort(.badRequest, reason: "Invalid or missing user ID")
-        }
-
-        let statusModel = NowStatus(userId: userId, name: message, delete: false)
-
-        // 既存ユーザーIDの検索
-        let existingStatus = try await NowStatus.query(on: req.db).filter(\.$userId == userId).all()
-        for model in existingStatus {
-            // 存在すれば更新する
-            model.delete = true
-            try await model.save(on: req.db)
-        }
-
-        try await statusModel.save(on: req.db)
-        try await ws.send("\(userId):\(message)")
-        print("\(userId):\(message)")
-    }
+//    func nowStatusUpdate(req: Request, ws: WebSocket, message: String) async throws {
+//        guard let userId = req.parameters.get("id") else {
+//            throw Abort(.badRequest, reason: "Invalid or missing user ID")
+//        }
+//
+//        let statusModel = NowStatus(userId: userId, name: message, delete: false)
+//
+//        // 既存ユーザーIDの検索
+//        let existingStatus = try await NowStatus.query(on: req.db).filter(\.$userId == userId).all()
+//        for model in existingStatus {
+//            // 存在すれば更新する
+//            model.delete = true
+//            try await model.save(on: req.db)
+//        }
+//
+//        try await statusModel.save(on: req.db)
+//        try await ws.send("\(userId):\(message)")
+//        print("\(userId):\(message)")
+//    }
     
     // get now status
     @Sendable
@@ -140,7 +140,10 @@ struct StatusController: RouteCollection {
         let status = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first()
         
         if let status = status {
-            let data = try await CustomStatus.query(on: req.db).filter(\.$name == status.name).all()
+            guard let uuid = UUID(uuidString: status.statusId) else {
+                throw Abort(.badRequest, reason: "Invalied statusId")
+            }
+            let data = try await CustomStatus.query(on: req.db).filter(\.$id == uuid).all()
             return data.map { $0.toDTO() }
         } else {
             throw Abort(.badRequest)
