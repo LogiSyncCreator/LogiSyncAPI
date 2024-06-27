@@ -58,4 +58,17 @@ final class User: Model, @unchecked Sendable {
             delete: self.$delete.value
         )
     }
+    
+    func toResDTO() -> UserDTO {
+        .init(
+            id: self.id,
+            name: self.$name.value,
+            company: self.$company.value,
+            role: self.$role.value,
+            userId: self.$userId.value,
+            phone: self.$phone.value,
+            profile: self.$profile.value,
+            delete: self.$delete.value
+        )
+    }
 }
