@@ -79,6 +79,14 @@ struct PushController: RouteCollection {
         
         let myToken = try await DeviceToken.query(on: req.db).filter(\.$userId == reqToken.userId).first()
         
+        // トークン変更なし
+        if let myToken = myToken {
+            if myToken.token == reqToken.token {
+                return .ok
+            }
+        }
+        
+        // トークンアプデ
         if myToken != nil {
             try await DeviceToken.query(on: req.db).set(\.$token, to: reqToken.token).set(\.$updateAt, to: Date()).filter(\.$userId == reqToken.userId).update()
             return .ok

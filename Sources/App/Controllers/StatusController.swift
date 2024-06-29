@@ -50,7 +50,7 @@ struct StatusController: RouteCollection {
     }
     
     @Sendable
-    func setStatus(req: Request) async throws -> NowStatusDTO {
+    func setStatus(req: Request) async throws -> ResponseNowStatusDTO {
         
         guard let userId = req.parameters.get("userId") else {
             throw Abort(.badRequest, reason: "Invalid or missing user ID")
@@ -76,7 +76,21 @@ struct StatusController: RouteCollection {
 
         try await statusModel.save(on: req.db)
         
-        return statusModel.toDTO()
+        guard let user = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first() else {
+            throw Abort(.badRequest, reason: "Miss match user id.")
+        }
+        
+        guard let statusId = UUID(uuidString: user.statusId) else {
+            throw Abort(.badRequest, reason: "Miss match status id")
+        }
+        
+        guard let status = try await CustomStatus.query(on: req.db).filter(\.$id == statusId).filter(\.$delete == false).first() else {
+            throw Abort(.badRequest, reason: "Miss match status id.")
+        }
+        
+        let res = ResponseNowStatusDTO(id: user.id, userId: userId, statusId: user.statusId, name: status.name, color: status.color, icon: status.icon, delete: status.delete)
+        
+        return res
     }
 
     
@@ -99,7 +113,7 @@ struct StatusController: RouteCollection {
         }
         
         do {
-            let groupStatus = try await CustomStatus.query(on: req.db).filter(\.$manager == manager).filter(\.$shipper == shipper).all()
+            let groupStatus = try await CustomStatus.query(on: req.db).filter(\.$manager == manager).filter(\.$shipper == shipper).filter(\.$delete == false).all()
             return groupStatus.map { $0.toDTO() }
         } catch {
             throw Abort(.badRequest, reason: "Invalid or miss match id")
@@ -116,7 +130,7 @@ struct StatusController: RouteCollection {
             throw Abort(.badRequest, reason: "No input user id.")
         }
         
-        guard let user = try await NowStatus.query(on: req.db).filter(\.$userId == userId).first() else {
+        guard let user = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first() else {
             throw Abort(.badRequest, reason: "Miss match user id.")
         }
         
@@ -124,7 +138,7 @@ struct StatusController: RouteCollection {
             throw Abort(.badRequest, reason: "Miss match status id")
         }
         
-        guard let status = try await CustomStatus.query(on: req.db).filter(\.$id == statusId).first() else {
+        guard let status = try await CustomStatus.query(on: req.db).filter(\.$id == statusId).filter(\.$delete == false).first() else {
             throw Abort(.badRequest, reason: "Miss match status id.")
         }
         
