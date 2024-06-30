@@ -15,7 +15,7 @@ struct PushController: RouteCollection {
 
         todos.get(use: self.index)
         todos.get("test",":userId", use: self.testNotificationUsersAllDevaice)
-        todos.get("notificationstatus",":hostId",":receiverId",":status", use: self.notificationStatus)
+        todos.get("notificationstatus",":hostId",":statusId", use: self.notificationStatus)
         todos.post("matchingregist", use: self.registNotificationMatching)
         todos.post("matchingcancel", use: self.cancelNotificationMatching)
         todos.post(use: self.updateDeviceToken)
@@ -83,6 +83,10 @@ struct PushController: RouteCollection {
         }
         
         if (try await DeviceToken.query(on: req.db).filter(\.$token == reqToken.token).first()) != nil {
+            if (try await DeviceToken.query(on: req.db).filter(\.$token == reqToken.token).filter(\.$userId != reqToken.userId).first()) != nil {
+                try await DeviceToken.query(on: req.db).set(\.$userId, to: reqToken.userId).filter(\.$token == reqToken.token).filter(\.$userId != reqToken.userId).update()
+                return .ok
+            }
             throw Abort(.badRequest, reason: "Registered device token.")
         }
         
@@ -128,18 +132,6 @@ struct PushController: RouteCollection {
             return .ok
         }
     }
-    
-    // プッシュ通知とバックグラウンド通知の使い分け
-    // プッシュ通知で連絡
-    // バックグラウンドでデータをもらう
-    // 値を更新する系統はPush
-    // チャットは両方使うなどパターンはありそう
-    
-    // 実装機能
-    // マッチングの解除通知
-    //  マッチング解除
-    // ステータスの通知
-    //  ステータスの変更
     
     /// マッチング登録
     /// - parametars
@@ -225,8 +217,6 @@ struct PushController: RouteCollection {
             sound: .default
         )
         
-        print(payload)
-        
         for token in tokens {
             
             try await req.apns.client.sendAlertNotification(alert, deviceToken: token.token)
@@ -239,26 +229,61 @@ struct PushController: RouteCollection {
         
         return .ok
     }
-    
+
     // ステータスの変更を伝える
     @Sendable
     func notificationStatus(req: Request) async throws -> HTTPStatus {
-        guard let host = req.parameters.get("hostId") else { return .badRequest }
-        guard let receiver = req.parameters.get("receiverId") else { return .badRequest }
-        guard let status = req.parameters.get("status") else { return .badRequest }
+        guard let host = req.parameters.get("hostId") else {
+            req.logger.error("hostId not provided")
+            return .badRequest
+        }
+        guard let status = req.parameters.get("statusId") else {
+            req.logger.error("statusId not provided")
+            return .badRequest
+        }
         
-//        let hostToken = try await DeviceToken.query(on: req.db).filter(\.$userId == host).first()
-        let receiverToken = try await DeviceToken.query(on: req.db).filter(\.$userId == receiver).first()
-        let hostUser = try await User.query(on: req.db).filter(\.$userId == host).first()
+        guard let hostUser = try await User.query(on: req.db).filter(\.$userId == host).first() else {
+            req.logger.error("Invalid hostId: \(host)")
+            throw Abort(.badRequest, reason: "UserId is invalid.")
+        }
         
-        if let receiverToken = receiverToken,
-           let hostUser = hostUser {
-            let payload = StatusPayload(userId: host, status: status, mode: "status")
+        let receiverUsers = try await Matching.query(on: req.db).group(.or) { group in
+            group.filter(\.$driver == hostUser.userId)
+                 .filter(\.$shipper == hostUser.userId)
+                 .filter(\.$manager == hostUser.userId)
+        }.filter(\.$delete == false).all()
+        
+        req.logger.info("Found \(receiverUsers.count) receiver users")
+
+        var tokens: [DeviceTokenDTO] = []
+        
+        for user in receiverUsers {
+            let token = try await DeviceToken.query(on: req.db).group(.or) { group in
+                group.filter(\.$userId == user.driver)
+                     .filter(\.$userId == user.manager)
+                     .filter(\.$userId == user.shipper)
+            }.all()
+            for data in token {
+                tokens.append(data.toDTO())
+            }
+        }
+        
+        req.logger.info("Found \(tokens.count) tokens")
+
+        if let hostUserName = hostUser.toDTO().name {
+            if tokens.isEmpty {
+                req.logger.info("No tokens found")
+            } else {
+                req.logger.info("Tokens found, sending notifications")
+            }
+            
+            
+            let payload = StatusPayload(userId: hostUserName, status: status, mode: "status")
             
             let alert = APNSAlertNotification(
                 alert: .init(
                     title: .raw("LogiSync"),
-                    body: .raw("\(hostUser.name)が\(status)になりました")
+                    body: .raw("\(hostUserName)が\(status)になりました")
                 ),
                 expiration: .immediately,
                 priority: .immediately,
@@ -267,18 +292,40 @@ struct PushController: RouteCollection {
                 sound: .default
             )
             
-            try await req.apns.client.sendAlertNotification(alert, deviceToken: receiverToken.token)
-            
-            let back = APNSBackgroundNotification(expiration: .immediately, topic:  "com.nanaSoft.LogiSync", payload: payload)
-            
-            try await req.apns.client.sendBackgroundNotification(back, deviceToken: receiverToken.token)
+            for token in tokens {
+                // アンラップ
+                if let userId = token.userId,
+                   let token = token.token {
+                    // ホスト以外へ通知
+                    if userId != hostUser.userId {
+                        do{
+                            try await req.apns.client.sendAlertNotification(alert, deviceToken: token)
+                            
+                            let back = APNSBackgroundNotification(expiration: .immediately, topic: "com.nanaSoft.LogiSync", payload: payload)
+                            
+                            try await req.apns.client.sendBackgroundNotification(back, deviceToken: token)
+                        } catch {
+                            
+                            print("TokenError: \(token)")
+                        }
+                    } // ホスト以外へ通知
+                } // アンラップ
+            }
             
             return .ok
+            
+        } else {
+            req.logger.error("Host user name not found")
         }
         
         return .badRequest
-        
     }
+    
+    // プッシュ通知とバックグラウンド通知の使い分け
+    // プッシュ通知で連絡
+    // バックグラウンドでデータをもらう
+    // 値を更新する系統はPush
+    // チャットは両方使うなどパターンはありそう
 }
 
 struct StatusPayload: Codable {

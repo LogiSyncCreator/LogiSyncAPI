@@ -26,7 +26,7 @@ struct MatchingController: RouteCollection {
         
         try await matching.save(on: req.db)
         
-        let status = try await req.client.post(URI(stringLiteral: "http://192.168.68.82:8080/push/matchingregist"), content: matching.toDTO())
+        let status = try await req.client.post(URI(stringLiteral: "http://\(EnvData().ip):\(EnvData().port)/push/matchingregist"), content: matching.toDTO())
         
         print("push: \(status.status)")
         
@@ -45,7 +45,7 @@ struct MatchingController: RouteCollection {
         
         let matching = try await Matching.find(uuid, on: req.db)
         
-        let status = try await req.client.post(URI(stringLiteral: "http://192.168.68.82:8080/push/matchingcancel"), content: matching?.toDTO() ?? MatchingDTO())
+        let status = try await req.client.post(URI(stringLiteral: "http://\(EnvData().ip):\(EnvData().port)/push/matchingcancel"), content: matching?.toDTO() ?? MatchingDTO())
         
         print("push: \(status.status)")
         
