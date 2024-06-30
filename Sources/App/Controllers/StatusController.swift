@@ -90,6 +90,12 @@ struct StatusController: RouteCollection {
         
         let res = ResponseNowStatusDTO(id: user.id, userId: userId, statusId: user.statusId, name: status.name, color: status.color, icon: status.icon, delete: status.delete)
         
+        let url = URI(stringLiteral: "http://\(EnvData().ip):\(EnvData().port)/push/notificationstatus/\(userId)/\(statusId)")
+        
+        let push = try await req.client.get(url)
+        
+        print("notificationstatus: \(push.status)")
+        
         return res
     }
 

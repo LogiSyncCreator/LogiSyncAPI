@@ -270,7 +270,8 @@ struct PushController: RouteCollection {
         
         req.logger.info("Found \(tokens.count) tokens")
 
-        if let hostUserName = hostUser.toDTO().name {
+        if let hostUserName = hostUser.toDTO().name,
+           let hostUserId = hostUser.toDTO().userId {
             if tokens.isEmpty {
                 req.logger.info("No tokens found")
             } else {
@@ -278,7 +279,7 @@ struct PushController: RouteCollection {
             }
             
             
-            let payload = StatusPayload(userId: hostUserName, status: status, mode: "status")
+            let payload = StatusPayload(userId: hostUserId, status: status, mode: "status")
             
             let alert = APNSAlertNotification(
                 alert: .init(
