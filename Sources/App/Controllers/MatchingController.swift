@@ -25,6 +25,11 @@ struct MatchingController: RouteCollection {
         let matching = try req.content.decode(MatchingDTO.self).toModel()
         
         try await matching.save(on: req.db)
+        
+        let status = try await req.client.post(URI(stringLiteral: "http://192.168.68.82:8080/push/matchingregist"), content: matching.toDTO())
+        
+        print("push: \(status.status)")
+        
         return matching.toDTO()
     }
     

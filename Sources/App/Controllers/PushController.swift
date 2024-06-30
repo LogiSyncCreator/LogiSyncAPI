@@ -16,6 +16,7 @@ struct PushController: RouteCollection {
         todos.get(use: self.index)
         todos.get("test",":userId", use: self.testNotificationUsersAllDevaice)
         todos.get("notificationstatus",":hostId",":receiverId",":status", use: self.notificationStatus)
+        todos.post("matchingregist", use: self.registNotificationMatching)
         todos.post(use: self.updateDeviceToken)
         todos.group(":todoID") { todo in
             todo.delete(use: self.delete)
@@ -80,7 +81,7 @@ struct PushController: RouteCollection {
             throw Abort(.badRequest, reason: "Not found user id.")
         }
         
-        if let deviceToken = try await DeviceToken.query(on: req.db).filter(\.$token == reqToken.token).first() {
+        if (try await DeviceToken.query(on: req.db).filter(\.$token == reqToken.token).first()) != nil {
             throw Abort(.badRequest, reason: "Registered device token.")
         }
         
@@ -133,6 +134,54 @@ struct PushController: RouteCollection {
     // 値を更新する系統はPush
     // チャットは両方使うなどパターンはありそう
     
+    // 実装機能
+    // マッチングの登録通知
+    //  マッチング登録
+    // マッチングの解除通知
+    //  マッチング解除
+    // ステータスの通知
+    //  ステータスの変更
+    
+    /// マッチング登録
+    /// - parametars
+    ///     - マッチングID
+    @Sendable
+    func registNotificationMatching(req: Request) async throws -> HTTPStatus {
+        let matching = try req.content.decode(MatchingDTO.self)
+        
+        let tokens = try await DeviceToken.query(on: req.db).group(.or) { token in
+            token.filter(\.$userId == matching.driver ?? "")
+            token.filter(\.$userId == matching.shipper ?? "")
+            token.filter(\.$userId == matching.manager ?? "")
+        }.all()
+        
+        let alert = APNSAlertNotification(
+            alert: .init(
+                title: .raw("LogiSync"),
+                body: .raw("マッチングリストが更新されました")
+            ),
+            expiration: .immediately,
+            priority: .immediately,
+            topic: "com.nanaSoft.LogiSync",
+            payload: matching,
+            sound: .default
+        )
+        
+        for token in tokens {
+            
+            try await req.apns.client.sendAlertNotification(alert, deviceToken: token.token)
+            
+            let back = APNSBackgroundNotification(expiration: .immediately, topic:  "com.nanaSoft.LogiSync", payload: matching)
+            
+            try await req.apns.client.sendBackgroundNotification(back, deviceToken: token.token)
+            
+        }
+        
+        
+        return .ok
+    }
+    
+    
     // ステータスの変更を伝える
     @Sendable
     func notificationStatus(req: Request) async throws -> HTTPStatus {
@@ -143,7 +192,6 @@ struct PushController: RouteCollection {
 //        let hostToken = try await DeviceToken.query(on: req.db).filter(\.$userId == host).first()
         let receiverToken = try await DeviceToken.query(on: req.db).filter(\.$userId == receiver).first()
         let hostUser = try await User.query(on: req.db).filter(\.$userId == host).first()
-        
         
         if let receiverToken = receiverToken,
            let hostUser = hostUser {
@@ -179,4 +227,8 @@ struct StatusPayload: Codable {
     var userId: String
     var status: String
     var mode: String
+}
+
+struct MatchingPayload: Codable {
+    var id: String
 }
