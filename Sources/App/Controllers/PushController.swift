@@ -14,7 +14,7 @@ struct PushController: RouteCollection {
         let todos = routes.grouped("push")
 
         todos.get(use: self.index)
-        todos.get("test", use: self.test)
+        todos.get("test",":userId", use: self.testNotificationUsersAllDevaice)
         todos.get("notificationstatus",":hostId",":receiverId",":status", use: self.notificationStatus)
         todos.post(use: self.updateDeviceToken)
         todos.group(":todoID") { todo in
@@ -67,8 +67,11 @@ struct PushController: RouteCollection {
         return .ok
     }
     
-    // DeviceTokenの更新API
-    
+    /// DeviceTokenの更新API
+    /// - リクエストの受信
+    /// - ユーザーIDの照合
+    /// - 登録済みの確認
+    /// - 登録
     @Sendable
     func updateDeviceToken(req: Request) async throws -> HTTPStatus {
         let reqToken = try req.content.decode(DeviceTokenDTO.self).toModel()
@@ -77,21 +80,49 @@ struct PushController: RouteCollection {
             throw Abort(.badRequest, reason: "Not found user id.")
         }
         
-        let myToken = try await DeviceToken.query(on: req.db).filter(\.$userId == reqToken.userId).first()
-        
-        // トークン変更なし
-        if let myToken = myToken {
-            if myToken.token == reqToken.token {
-                return .ok
-            }
+        if let deviceToken = try await DeviceToken.query(on: req.db).filter(\.$token == reqToken.token).first() {
+            throw Abort(.badRequest, reason: "Registered device token.")
         }
         
-        // トークンアプデ
-        if myToken != nil {
-            try await DeviceToken.query(on: req.db).set(\.$token, to: reqToken.token).set(\.$updateAt, to: Date()).filter(\.$userId == reqToken.userId).update()
-            return .ok
+        try await reqToken.save(on: req.db)
+        
+        return .ok
+    }
+    
+    /// ユーザーの持つすべての登録端末に通知を送信
+    /// - parametars
+    ///     - userId
+    /// - 手順
+    ///     - パラメータの確認
+    ///     - データ取り出し
+    ///     - データのnullチェック
+    ///     - 通知の送信
+    @Sendable
+    func testNotificationUsersAllDevaice(req: Request) async throws -> HTTPStatus {
+        guard let userId = req.parameters.get("userId") else {
+            throw Abort(.badRequest, reason: "Not input UserId.")
+        }
+        
+        let userTokens = try await DeviceToken.query(on: req.db).filter(\.$userId == userId).all()
+        
+        if userTokens.isEmpty {
+            throw Abort(.badRequest, reason: "Invalid user ID.")
         } else {
-            try await reqToken.save(on: req.db)
+            for data in userTokens {
+                let payload = Payload(title: "テスト送信", body: "テストだよ", like: "テスト")
+                let alert = APNSAlertNotification(
+                    alert: .init(
+                        title: .raw("LogiSync"),
+                        body: .raw("テスト送信です")
+                    ),
+                    expiration: .immediately,
+                    priority: .immediately,
+                    topic: "com.nanaSoft.LogiSync",
+                    payload: payload,
+                    sound: .default
+                )
+                try await req.apns.client.sendAlertNotification(alert, deviceToken: data.token)
+            }
             return .ok
         }
     }
