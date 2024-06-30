@@ -43,6 +43,12 @@ struct MatchingController: RouteCollection {
         
         try await Matching.query(on: req.db).set(\.$delete, to: true).filter(\.$id == uuid).update()
         
+        let matching = try await Matching.find(uuid, on: req.db)
+        
+        let status = try await req.client.post(URI(stringLiteral: "http://192.168.68.82:8080/push/matchingcancel"), content: matching?.toDTO() ?? MatchingDTO())
+        
+        print("push: \(status.status)")
+        
         return .noContent
     }
     
@@ -53,9 +59,9 @@ struct MatchingController: RouteCollection {
         let matchings = try await Matching.query(on: req.db)
             .group(.or) { orGroup in
                 orGroup.filter(\.$manager == matching.manager)
-                    .filter(\.$driver == matching.driver)
-                    .filter(\.$shipper == matching.shipper)
-            }.sort(\.$start)
+                .filter(\.$driver == matching.driver)
+                .filter(\.$shipper == matching.shipper)
+            }.filter(\.$delete == false).sort(\.$start)
             .all()
         
         var res: [ResponseMatchingGroup] = []

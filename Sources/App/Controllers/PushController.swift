@@ -17,6 +17,7 @@ struct PushController: RouteCollection {
         todos.get("test",":userId", use: self.testNotificationUsersAllDevaice)
         todos.get("notificationstatus",":hostId",":receiverId",":status", use: self.notificationStatus)
         todos.post("matchingregist", use: self.registNotificationMatching)
+        todos.post("matchingcancel", use: self.cancelNotificationMatching)
         todos.post(use: self.updateDeviceToken)
         todos.group(":todoID") { todo in
             todo.delete(use: self.delete)
@@ -135,8 +136,6 @@ struct PushController: RouteCollection {
     // チャットは両方使うなどパターンはありそう
     
     // 実装機能
-    // マッチングの登録通知
-    //  マッチング登録
     // マッチングの解除通知
     //  マッチング解除
     // ステータスの通知
@@ -162,6 +161,8 @@ struct PushController: RouteCollection {
             throw Abort(.badRequest, reason: "Shipper ID is invalid.")
         }
         
+        let payload = CommonPayload(userId: "", status: "", mode: "matching")
+        
         let alert = APNSAlertNotification(
             alert: .init(
                 title: .raw("LogiSync"),
@@ -170,7 +171,7 @@ struct PushController: RouteCollection {
             expiration: .immediately,
             priority: .immediately,
             topic: "com.nanaSoft.LogiSync",
-            payload: matching,
+            payload: payload,
             sound: .default
         )
         
@@ -188,6 +189,56 @@ struct PushController: RouteCollection {
         return .ok
     }
     
+    /// マッチング解除通知
+    /// - parametars
+    ///     - shipper name
+    ///     - driver name
+    @Sendable
+    func cancelNotificationMatching(req: Request) async throws -> HTTPStatus {
+        
+        let matching = try req.content.decode(MatchingDTO.self)
+        
+        guard let driver = try await User.query(on: req.db).filter(\.$userId == matching.driver ?? "").first() else {
+            throw Abort(.badRequest, reason: "Driver ID is invalid.")
+        }
+        guard let shipper = try await User.query(on: req.db).filter(\.$userId == matching.shipper ?? "").first() else {
+            throw Abort(.badRequest, reason: "Shipper ID is invalid.")
+        }
+        
+        let tokens = try await DeviceToken.query(on: req.db).group(.or) { token in
+            token.filter(\.$userId == matching.driver ?? "")
+            token.filter(\.$userId == matching.shipper ?? "")
+            token.filter(\.$userId == matching.manager ?? "")
+        }.all()
+        
+        let payload = CommonPayload(userId: "", status: "", mode: "matching")
+        
+        let alert = APNSAlertNotification(
+            alert: .init(
+                title: .raw("LogiSync"),
+                body: .raw("\(driver.name)さんと\(shipper.name)さんのマッチングが終了しました")
+            ),
+            expiration: .immediately,
+            priority: .immediately,
+            topic: "com.nanaSoft.LogiSync",
+            payload: payload,
+            sound: .default
+        )
+        
+        print(payload)
+        
+        for token in tokens {
+            
+            try await req.apns.client.sendAlertNotification(alert, deviceToken: token.token)
+            
+            let back = APNSBackgroundNotification(expiration: .immediately, topic:  "com.nanaSoft.LogiSync", payload: payload)
+            
+            try await req.apns.client.sendBackgroundNotification(back, deviceToken: token.token)
+            
+        }
+        
+        return .ok
+    }
     
     // ステータスの変更を伝える
     @Sendable
@@ -236,6 +287,8 @@ struct StatusPayload: Codable {
     var mode: String
 }
 
-struct MatchingPayload: Codable {
-    var id: String
+struct CommonPayload: Codable {
+    var userId: String
+    var status: String
+    var mode: String
 }
