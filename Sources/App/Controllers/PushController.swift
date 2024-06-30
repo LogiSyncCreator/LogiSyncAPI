@@ -155,10 +155,17 @@ struct PushController: RouteCollection {
             token.filter(\.$userId == matching.manager ?? "")
         }.all()
         
+        guard let driver = try await User.query(on: req.db).filter(\.$userId == matching.driver ?? "").first() else {
+            throw Abort(.badRequest, reason: "Driver ID is invalid.")
+        }
+        guard let shipper = try await User.query(on: req.db).filter(\.$userId == matching.shipper ?? "").first() else {
+            throw Abort(.badRequest, reason: "Shipper ID is invalid.")
+        }
+        
         let alert = APNSAlertNotification(
             alert: .init(
                 title: .raw("LogiSync"),
-                body: .raw("マッチングリストが更新されました")
+                body: .raw("\(driver.name)さんと\(shipper.name)さんがマッチングされました")
             ),
             expiration: .immediately,
             priority: .immediately,
