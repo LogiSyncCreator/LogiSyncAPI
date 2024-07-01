@@ -58,9 +58,9 @@ struct MatchingController: RouteCollection {
         let matching = try req.content.decode(RequestMatchingGroupDTO.self)
         let matchings = try await Matching.query(on: req.db)
             .group(.or) { orGroup in
-                orGroup.filter(\.$manager == matching.manager)
-                .filter(\.$driver == matching.driver)
-                .filter(\.$shipper == matching.shipper)
+                orGroup.filter(\.$manager == matching.manager ?? "")
+                    .filter(\.$driver == matching.driver ?? "")
+                    .filter(\.$shipper == matching.shipper ?? "")
             }.filter(\.$delete == false).sort(\.$start)
             .all()
         
@@ -87,9 +87,9 @@ struct MatchingController: RouteCollection {
 }
 
 struct RequestMatchingGroupDTO: Content {
-    var manager: String
-    var driver: String
-    var shipper: String
+    var manager: String?
+    var driver: String?
+    var shipper: String?
 }
 
 struct MatchingGroup: Content {
