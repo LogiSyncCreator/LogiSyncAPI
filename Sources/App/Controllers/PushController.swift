@@ -19,9 +19,7 @@ struct PushController: RouteCollection {
         todos.post("matchingregist", use: self.registNotificationMatching)
         todos.post("matchingcancel", use: self.cancelNotificationMatching)
         todos.post(use: self.updateDeviceToken)
-        todos.group(":todoID") { todo in
-            todo.delete(use: self.delete)
-        }
+        todos.delete("deletetoken", ":token", use: self.delete)
     }
 
     @Sendable
@@ -37,13 +35,15 @@ struct PushController: RouteCollection {
         return todo.toDTO()
     }
 
+    // トークンの削除
     @Sendable
     func delete(req: Request) async throws -> HTTPStatus {
-        guard let todo = try await Todo.find(req.parameters.get("todoID"), on: req.db) else {
-            throw Abort(.notFound)
+        guard let token = req.parameters.get("token") else {
+            throw Abort(.badRequest, reason: "token is invalid")
         }
-
-        try await todo.delete(on: req.db)
+        
+        try await DeviceToken.query(on: req.db).filter(\.$token == token).delete()
+        
         return .noContent
     }
     
@@ -242,6 +242,11 @@ struct PushController: RouteCollection {
             return .badRequest
         }
         
+        guard let statusUuid = UUID(uuidString: status) ,let statusData = try await CustomStatus.find(statusUuid, on: req.db) else {
+            req.logger.error("statusId is invalid")
+            return .badRequest
+        }
+        
         guard let hostUser = try await User.query(on: req.db).filter(\.$userId == host).first() else {
             req.logger.error("Invalid hostId: \(host)")
             throw Abort(.badRequest, reason: "UserId is invalid.")
@@ -284,7 +289,7 @@ struct PushController: RouteCollection {
             let alert = APNSAlertNotification(
                 alert: .init(
                     title: .raw("LogiSync"),
-                    body: .raw("\(hostUserName)が\(status)になりました")
+                    body: .raw("\(hostUserName)が\(statusData.name)になりました")
                 ),
                 expiration: .immediately,
                 priority: .immediately,
@@ -301,15 +306,17 @@ struct PushController: RouteCollection {
                     if userId != hostUser.userId {
                         do{
                             try await req.apns.client.sendAlertNotification(alert, deviceToken: token)
-                            
-                            let back = APNSBackgroundNotification(expiration: .immediately, topic: "com.nanaSoft.LogiSync", payload: payload)
-                            
-                            try await req.apns.client.sendBackgroundNotification(back, deviceToken: token)
                         } catch {
-                            
                             print("TokenError: \(token)")
                         }
                     } // ホスト以外へ通知
+                    do {
+                        let back = APNSBackgroundNotification(expiration: .immediately, topic: "com.nanaSoft.LogiSync", payload: payload)
+                        
+                        try await req.apns.client.sendBackgroundNotification(back, deviceToken: token)
+                    } catch {
+                        print("TokenError: \(token)")
+                    }
                 } // アンラップ
             }
             
