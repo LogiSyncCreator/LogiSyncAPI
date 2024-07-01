@@ -56,21 +56,4 @@ struct LocationController: RouteCollection {
         }
     }
 
-//    @Sendable
-//    func create(req: Request) async throws -> TodoDTO {
-//        let todo = try req.content.decode(TodoDTO.self).toModel()
-//
-//        try await todo.save(on: req.db)
-//        return todo.toDTO()
-//    }
-
-//    @Sendable
-//    func delete(req: Request) async throws -> HTTPStatus {
-//        guard let todo = try await Todo.find(req.parameters.get("todoID"), on: req.db) else {
-//            throw Abort(.notFound)
-//        }
-//
-//        try await todo.delete(on: req.db)
-//        return .noContent
-//    }
 }
