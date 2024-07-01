@@ -14,29 +14,11 @@ struct StatusController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let status = routes.grouped("status")
 
-        status.get(use: self.index)
         status.post(use: self.regist)
         status.delete(":id", use: self.delete)
-        status.get("setStatus",":id",":statusId", use: self.statusUpdate)
-        status.get("nowstatus",":id", use: self.getNowStatus)
+        status.get("nowstatus",":userId", use: self.getNowStatus)
         status.get("groupstatus", ":manId", ":shipId", use: self.getGroupStatus)
-        status.get("searchStatus", ":userId", use: self.getSearchUserStatus)
-//        status.webSocket("now", ":id") { req, ws in
-//            ws.onText { ws, st in
-//                        Task {
-//                            do {
-//                                try await nowStatusUpdate(req: req, ws: ws, message: st)
-//                            } catch {
-//                                print("Error: \(error)")
-//                            }
-//                        }
-//                    }
-//        }
-    }
-
-    @Sendable
-    func index(req: Request) async throws -> [TodoDTO] {
-        try await Todo.query(on: req.db).all().map { $0.toDTO() }
+        status.get("setstatus", ":userId", ":statusId", use: self.setStatus)
     }
     
     // customStatusの新規登録
@@ -68,9 +50,9 @@ struct StatusController: RouteCollection {
     }
     
     @Sendable
-    func statusUpdate(req: Request) async throws -> NowStatusDTO {
+    func setStatus(req: Request) async throws -> ResponseNowStatusDTO {
         
-        guard let userId = req.parameters.get("id") else {
+        guard let userId = req.parameters.get("userId") else {
             throw Abort(.badRequest, reason: "Invalid or missing user ID")
         }
         
@@ -85,6 +67,7 @@ struct StatusController: RouteCollection {
         
         // 既存ユーザーIDの検索
         let existingStatus = try await NowStatus.query(on: req.db).filter(\.$userId == userId).all()
+        
         for model in existingStatus {
             // 存在すれば更新する
             model.delete = true
@@ -93,62 +76,29 @@ struct StatusController: RouteCollection {
 
         try await statusModel.save(on: req.db)
         
-        return statusModel.toDTO()
-    }
-    
-    // nowStatusUpdate
-//    func nowStatusUpdate(req: Request, ws: WebSocket, message: String) async throws {
-//        guard let userId = req.parameters.get("id") else {
-//            throw Abort(.badRequest, reason: "Invalid or missing user ID")
-//        }
-//
-//        let statusModel = NowStatus(userId: userId, name: message, delete: false)
-//
-//        // 既存ユーザーIDの検索
-//        let existingStatus = try await NowStatus.query(on: req.db).filter(\.$userId == userId).all()
-//        for model in existingStatus {
-//            // 存在すれば更新する
-//            model.delete = true
-//            try await model.save(on: req.db)
-//        }
-//
-//        try await statusModel.save(on: req.db)
-//        try await ws.send("\(userId):\(message)")
-//        print("\(userId):\(message)")
-//    }
-    
-    // get now status
-    @Sendable
-    func getNowStatus(req: Request) async throws -> NowStatusDTO {
-        
-        guard let userId = req.parameters.get("id"),
-              let status = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first() else {
-            throw Abort(.badRequest, reason: "Invalid or missing user ID")
+        guard let user = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first() else {
+            throw Abort(.badRequest, reason: "Miss match user id.")
         }
         
-        return status.toDTO()
-        
-    }
-    
-    // ユーザーのステータスとアイコンを検索
-    @Sendable
-    func getSearchUserStatus(req: Request) async throws -> [CustomStatusDTO] {
-        guard let userId = req.parameters.get("userId") else {
-            throw Abort(.badRequest)
+        guard let statusId = UUID(uuidString: user.statusId) else {
+            throw Abort(.badRequest, reason: "Miss match status id")
         }
         
-        let status = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first()
-        
-        if let status = status {
-            guard let uuid = UUID(uuidString: status.statusId) else {
-                throw Abort(.badRequest, reason: "Invalied statusId")
-            }
-            let data = try await CustomStatus.query(on: req.db).filter(\.$id == uuid).all()
-            return data.map { $0.toDTO() }
-        } else {
-            throw Abort(.badRequest)
+        guard let status = try await CustomStatus.query(on: req.db).filter(\.$id == statusId).filter(\.$delete == false).first() else {
+            throw Abort(.badRequest, reason: "Miss match status id.")
         }
+        
+        let res = ResponseNowStatusDTO(id: user.id, userId: userId, statusId: user.statusId, name: status.name, color: status.color, icon: status.icon, delete: status.delete)
+        
+        let url = URI(stringLiteral: "http://\(EnvData().ip):\(EnvData().port)/push/notificationstatus/\(userId)/\(statusId)")
+        
+        let push = try await req.client.get(url)
+        
+        print("notificationstatus: \(push.status)")
+        
+        return res
     }
+
     
     @Sendable
     func getGroupStatus(req: Request) async throws -> [CustomStatusDTO] {
@@ -169,7 +119,7 @@ struct StatusController: RouteCollection {
         }
         
         do {
-            let groupStatus = try await CustomStatus.query(on: req.db).filter(\.$manager == manager).filter(\.$shipper == shipper).all()
+            let groupStatus = try await CustomStatus.query(on: req.db).filter(\.$manager == manager).filter(\.$shipper == shipper).filter(\.$delete == false).all()
             return groupStatus.map { $0.toDTO() }
         } catch {
             throw Abort(.badRequest, reason: "Invalid or miss match id")
@@ -177,4 +127,41 @@ struct StatusController: RouteCollection {
         
         
     }
+    
+    // 現在のステータスを取得する
+    @Sendable
+    func getNowStatus(req: Request) async throws -> ResponseNowStatusDTO {
+        // userId , statusId
+        guard let userId = req.parameters.get("userId") else {
+            throw Abort(.badRequest, reason: "No input user id.")
+        }
+        
+        guard let user = try await NowStatus.query(on: req.db).filter(\.$userId == userId).filter(\.$delete == false).first() else {
+            throw Abort(.badRequest, reason: "Miss match user id.")
+        }
+        
+        guard let statusId = UUID(uuidString: user.statusId) else {
+            throw Abort(.badRequest, reason: "Miss match status id")
+        }
+        
+        guard let status = try await CustomStatus.query(on: req.db).filter(\.$id == statusId).filter(\.$delete == false).first() else {
+            throw Abort(.badRequest, reason: "Miss match status id.")
+        }
+        
+        
+        let res = ResponseNowStatusDTO(id: user.id, userId: user.userId, statusId: user.statusId, name: status.name, color: status.color, icon: status.icon, delete: status.delete)
+        
+        return res
+                
+    }
+}
+
+struct ResponseNowStatusDTO: Content {
+    var id: UUID?
+    var userId: String?
+    var statusId: String?
+    var name: String?
+    var color: String?
+    var icon: String?
+    var delete: Bool?
 }
