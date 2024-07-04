@@ -13,10 +13,11 @@ struct LocationController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let location = routes.grouped("locations")
 
-        location.get(use: self.index)
+        location.get("index",use: self.index)
         location.post(use: self.regist)
         location.delete(":userId", use: self.delete)
         location.get(":userId", use: self.getLocation)
+        location.delete("deletemylocation", ":UUID", use: self.deleteLocation)
     }
 
     @Sendable
@@ -54,6 +55,25 @@ struct LocationController: RouteCollection {
         return try await Location.query(on: req.db).filter(\.$userId == userId).all().map {
             $0.toDTO()
         }
+    }
+    
+    // 任意削除
+    @Sendable
+    func deleteLocation(req: Request) async throws -> HTTPStatus {
+        guard let uuidString = req.parameters.get("UUID") else {
+            throw Abort(.badRequest, reason: "No input UUID.")
+        }
+        
+        guard let uuid = UUID(uuidString: uuidString) else {
+            throw Abort(.badRequest, reason: "Input UUID is invalid.")
+        }
+        
+        let model = try await Location.find(uuid, on: req.db)
+        
+        try await model?.delete(on: req.db)
+        
+        return .noContent
+        
     }
 
 }
