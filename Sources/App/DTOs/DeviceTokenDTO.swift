@@ -9,7 +9,7 @@ import Foundation
 import Fluent
 import Vapor
 
-struct DeviceTokenDTO: Content {
+struct DeviceTokenDTO: Content, Hashable {
     var id: UUID?
     var userId: String?
     var token: String?
@@ -26,5 +26,13 @@ struct DeviceTokenDTO: Content {
             model.token = token
         }
         return model
+    }
+    
+    static func == (lhs: DeviceTokenDTO, rhs: DeviceTokenDTO) -> Bool {
+        return lhs.token == rhs.token
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(token)
     }
 }

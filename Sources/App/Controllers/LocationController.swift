@@ -14,6 +14,7 @@ struct LocationController: RouteCollection {
         let location = routes.grouped("locations")
 
         location.get("index",use: self.index)
+        location.post(":matchingId",use: self.regist)
         location.post(use: self.regist)
         location.delete(":userId", use: self.delete)
         location.get(":userId", use: self.getLocation)
@@ -30,6 +31,15 @@ struct LocationController: RouteCollection {
     func regist(req: Request) async throws -> LocationDTO {
         let lon = try req.content.decode(LocationDTO.self).toModel()
         try await lon.save(on: req.db)
+        
+        let matchingId = req.parameters.get("matchingId")
+        
+        if let matchingId = matchingId {
+            let url = URI(stringLiteral: "http://\(EnvData().ip):\(EnvData().port)/push/location/\(matchingId)")
+            let push = try await req.client.post(url, content: lon.toDTO())
+            print("push location: \(push)")
+        }
+        
         return lon.toDTO()
     }
     // 全数削除
