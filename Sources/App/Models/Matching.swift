@@ -21,7 +21,7 @@ final class Matching: Model, @unchecked Sendable {
     var shipper: String
     @Field(key: "driver_id")
     var driver: String
-    @Timestamp(key: "start_date", on: .create)
+    @Field(key: "start_date")
     var start: Date?
     @Field(key: "address")
     var address: String     // 目的地
@@ -48,7 +48,7 @@ final class Matching: Model, @unchecked Sendable {
             manager: self.$manager.value,
             shipper: self.$shipper.value,
             driver: self.$driver.value,
-            start: self.start,
+            start: self.$start.wrappedValue,
             address: self.$address.value,
             delete: self.$delete.value
         )
