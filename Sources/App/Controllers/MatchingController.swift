@@ -25,6 +25,8 @@ struct MatchingController: RouteCollection {
     func regist(req: Request) async throws -> MatchingDTO {
         let matching = try req.content.decode(MatchingDTO.self).toModel()
         
+        print(try req.content.decode(MatchingDTO.self).toModel())
+        
         try await matching.save(on: req.db)
         
         let status = try await req.client.post(URI(stringLiteral: "http://\(EnvData().ip):\(EnvData().port)/push/matchingregist"), content: matching.toDTO())

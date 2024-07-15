@@ -22,17 +22,18 @@ struct MatchingDTO: Content {
         let model = Matching()
         
         model.id = self.id
-        model.start = self.start
         if let manager = self.manager,
            let shipper = self.shipper,
            let driver = self.driver,
            let address = self.address,
-           let delete = self.delete {
+           let delete = self.delete,
+           let start = self.start {
             model.manager = manager
             model.shipper = shipper
             model.driver = driver
             model.address = address
             model.delete = delete
+            model.start = start
         }
         
         return model

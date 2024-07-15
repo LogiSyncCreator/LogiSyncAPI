@@ -48,7 +48,7 @@ final class Matching: Model, @unchecked Sendable {
             manager: self.$manager.value,
             shipper: self.$shipper.value,
             driver: self.$driver.value,
-            start: self.start,
+            start: self.$start.wrappedValue,
             address: self.$address.value,
             delete: self.$delete.value
         )
