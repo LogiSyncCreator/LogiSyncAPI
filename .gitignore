@@ -44,3 +44,6 @@ fastlane/test_output
 iOSInjectionProject/
 
 key.swift
+
+# .gitignore
+*.sqlite
