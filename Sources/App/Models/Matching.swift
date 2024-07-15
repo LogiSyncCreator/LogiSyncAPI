@@ -21,7 +21,7 @@ final class Matching: Model, @unchecked Sendable {
     var shipper: String
     @Field(key: "driver_id")
     var driver: String
-    @Timestamp(key: "start_date", on: .create)
+    @Field(key: "start_date")
     var start: Date?
     @Field(key: "address")
     var address: String     // 目的地
