@@ -25,6 +25,11 @@ struct MatchingController: RouteCollection {
     func regist(req: Request) async throws -> MatchingDTO {
         let matching = try req.content.decode(MatchingDTO.self).toModel()
         
+        guard let driverId = try await User.query(on: req.db).filter(\.$userId == matching.driver).first(),
+              let shipperId = try await User.query(on: req.db).filter(\.$userId == matching.shipper).first() else {
+            throw Abort(.notFound, reason: "Not found is user.")
+        }
+        
         print(try req.content.decode(MatchingDTO.self).toModel())
         
         try await matching.save(on: req.db)

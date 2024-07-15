@@ -22,6 +22,7 @@ struct PushController: RouteCollection {
         todos.post(use: self.updateDeviceToken)
         todos.delete("deletetoken", ":token", use: self.delete)
         todos.get("pushmsg", ":receiverId", ":message", use: self.messagePush)
+        todos.get("updatestatus", ":shipperId", ":managerId", use: self.sendCreateStatusNotification)
     }
 
     @Sendable
@@ -454,12 +455,67 @@ struct PushController: RouteCollection {
     // 値を更新する系統はPush
     // チャットは両方使うなどパターンはありそう
     
-    
+    // ステータスの更新を知らせる
+    @Sendable
+    func sendCreateStatusNotification(req: Request) async throws -> HTTPStatus {
+        
+        guard let shipper = req.parameters.get("shipperId") else { throw Abort(.notFound, reason: "Shipper Id is invalid") }
+        guard let manager = req.parameters.get("managerId") else { throw Abort(.notFound, reason: "Manager Id is invalid") }
+        
+        let pair = try await Matching.query(on: req.db).filter(\.$delete == false).group(.or) { group in
+            group.filter(\.$shipper == shipper)
+                .filter(\.$manager == manager)
+        }.all()
+        
+        var drivers: [String] = []
+        
+        for data in pair {
+            drivers.append(String(data.toDTO().driver ?? ""))
+        }
+        
+        drivers = removeDuplicates(array: drivers)
+        
+        let users: [String] = drivers + [shipper]
+        
+        var tokens: [DeviceToken] = []
+        
+        for id in users {
+            tokens.append(contentsOf: try await DeviceToken.query(on: req.db).filter(\.$userId == id).all())
+        }
+        
+//        for data in pair {
+//            tokens.append(contentsOf: try await DeviceToken.query(on: req.db).group(.or) { group in
+//                group.filter(\.$userId == data.toDTO().driver ?? "")
+//                    .filter(\.$userId == data.toDTO().shipper ?? "")
+//            }.all())
+//        }
+        
+        let payload = StatusListPayload(shipperId: shipper, managerId: manager, mode: "BackStatus")
+        let back = APNSBackgroundNotification(expiration: .immediately, topic: "com.nanaSoft.LogiSync", payload: payload)
+        
+        for token in tokens {
+            do {
+                if let token = token.toDTO().token {
+                    try await req.apns.client.sendBackgroundNotification(back, deviceToken: token)
+                }
+            } catch {
+                print("token is invalid: \(String(describing: token.toDTO().token))")
+            }
+        }
+        
+        return .ok
+    }
     
     // 重複を取り除く
     func removeDuplicates<T: Hashable>(array: [T]) -> [T] {
         return Array(Set(array))
     }
+}
+
+struct StatusListPayload: Codable {
+    var shipperId: String
+    var managerId: String
+    var mode: String
 }
 
 struct StatusPayload: Codable {
