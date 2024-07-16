@@ -19,6 +19,7 @@ func routes(_ app: Application) throws {
     try app.register(collection: DeviceTokenController())
     try app.register(collection: LocationController())
     try app.register(collection: PushController())
+    try app.register(collection: ChatsController())
 }
 
 struct Payload: Codable {
