@@ -16,6 +16,7 @@ struct ChatsController: RouteCollection {
         chats.get("index", use: self.index)
         chats.post("send", use: self.sendMessage)
         chats.get("received", ":matchingId", use: self.receivedMessage)
+        chats.post("update", use: self.updateCheck)
     }
     
     @Sendable
@@ -64,7 +65,23 @@ struct ChatsController: RouteCollection {
     
     // アプデチェック
     @Sendable
-    func updateCheck(req: Request) async throws {
+    func updateCheck(req: Request) async throws -> [ChatsDTO] {
+        let update: requestUpdateStateDTO? = try req.content.decode(requestUpdateStateDTO.self)
+        
+        if let update = update {
+            let chats = try await Chats.query(on: req.db).filter(\.$matchingId == update.matchingId ?? "").filter(\.$createAt > update.checkDate ?? Date() ).all()
+            
+            var resChat: [ChatsDTO] = []
+            
+            for data in chats {
+                resChat.append(data.toDTO())
+            }
+            
+            return resChat
+            
+        } else {
+            throw Abort(.badRequest, reason: "Input data is invalid")
+        }
         
     }
 }
@@ -73,4 +90,9 @@ struct requestChatMesseageDTO: Content {
     var matchingId: String?
     var sendUserId: String?
     var sendMessage: String?
+}
+
+struct requestUpdateStateDTO: Content {
+    var matchingId: String?
+    var checkDate: Date?
 }
