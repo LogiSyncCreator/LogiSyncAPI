@@ -33,11 +33,11 @@ struct ChatsController: RouteCollection {
             throw Abort(.badRequest, reason: "matching id is invalid.")
         }
         
-        guard let matching = try await Matching.find(matchingId, on: req.db) else {
+        guard (try await Matching.find(matchingId, on: req.db)) != nil else {
             throw Abort(.notFound, reason: "matching is not found.")
         }
         
-        guard let user = try await User.query(on: req.db).filter(\.$userId == chat?.sendUserId ?? "").first() else {
+        guard (try await User.query(on: req.db).filter(\.$userId == chat?.sendUserId ?? "").first()) != nil else {
             throw Abort(.notFound, reason: "matching is not found.")
         }
         if let chat = chat {
@@ -51,13 +51,52 @@ struct ChatsController: RouteCollection {
     
     // 受信
     @Sendable
-    func receivedMessage(req: Request) async throws -> [ChatsDTO] {
+    func receivedMessage(req: Request) async throws -> [responseChatDTO] {
         let matchingId = req.parameters.get("matchingId") ?? ""
         let chats = try await Chats.query(on: req.db).filter(\.$matchingId == matchingId).all()
-        var resChat: [ChatsDTO] = []
+        
+        
+        guard let matchingId = UUID(uuidString: matchingId) else {
+            throw Abort(.badRequest, reason: "input data is invalid.")
+        }
+        
+        guard let matching = try await Matching.find(matchingId, on: req.db) else {
+            throw Abort(.badRequest, reason: "matching id is invalid.")
+        }
+        
+        guard let driver = try await User.query(on: req.db).filter(\.$userId == matching.driver).first(),
+              let shipper = try await User.query(on: req.db).filter(\.$userId == matching.shipper).first(),
+              let manager = try await User.query(on: req.db).filter(\.$userId == matching.shipper).first() else {
+                throw Abort(.badRequest, reason: "matching id is invalid.")
+        }
+        
+        
+        var resChat: [responseChatDTO] = []
         
         for data in chats {
-            resChat.append(data.toDTO())
+            var res = responseChatDTO()
+                
+            if data.toDTO().sendUserId == driver.toDTO().userId {
+                res.sendUserId = driver.toDTO().userId
+                res.userName = driver.toDTO().name
+                res.role = driver.toDTO().role
+            }
+            if data.toDTO().sendUserId == shipper.toDTO().userId {
+                res.sendUserId = shipper.toDTO().userId
+                res.userName = shipper.toDTO().name
+                res.role = shipper.toDTO().role
+            }
+            if data.toDTO().sendUserId == manager.toDTO().userId {
+                res.sendUserId = manager.toDTO().userId
+                res.userName = manager.toDTO().name
+                res.role = manager.toDTO().role
+            }
+            
+            res.id = data.toDTO().id
+            res.matchingId = data.toDTO().matchingId
+            res.sendMessage = data.toDTO().sendMessage
+            res.createAt = data.toDTO().createAt
+            resChat.append(res)
         }
         
         return resChat
@@ -65,11 +104,21 @@ struct ChatsController: RouteCollection {
     
     // アプデチェック
     @Sendable
-    func updateCheck(req: Request) async throws -> [ChatsDTO] {
+    func updateCheck(req: Request) async throws -> [responseChatDTO] {
         let update: requestUpdateStateDTO = try req.content.decode(requestUpdateStateDTO.self)
         
         guard let matchingId = UUID(uuidString: update.matchingId ?? "") else {
             throw Abort(.badRequest, reason: "input data is invalid.")
+        }
+        
+        guard let matching = try await Matching.find(matchingId, on: req.db) else {
+            throw Abort(.badRequest, reason: "matching id is invalid.")
+        }
+        
+        guard let driver = try await User.query(on: req.db).filter(\.$userId == matching.driver).first(),
+              let shipper = try await User.query(on: req.db).filter(\.$userId == matching.shipper).first(),
+              let manager = try await User.query(on: req.db).filter(\.$userId == matching.shipper).first() else {
+                throw Abort(.badRequest, reason: "matching id is invalid.")
         }
         
         if let updateMatchingId = update.matchingId,
@@ -79,11 +128,33 @@ struct ChatsController: RouteCollection {
                 .filter(\.$createAt > updateCheckDate)
                 .all()
             
-            var resChat: [ChatsDTO] = []
+            var resChat: [responseChatDTO] = []
             
             for data in chats {
+                var res = responseChatDTO()
                 if data.createAt?.description != updateCheckDate.description {
-                    resChat.append(data.toDTO())
+                    
+                    if data.toDTO().sendUserId == driver.toDTO().userId {
+                        res.sendUserId = driver.toDTO().userId
+                        res.userName = driver.toDTO().name
+                        res.role = driver.toDTO().role
+                    }
+                    if data.toDTO().sendUserId == shipper.toDTO().userId {
+                        res.sendUserId = shipper.toDTO().userId
+                        res.userName = shipper.toDTO().name
+                        res.role = shipper.toDTO().role
+                    }
+                    if data.toDTO().sendUserId == manager.toDTO().userId {
+                        res.sendUserId = manager.toDTO().userId
+                        res.userName = manager.toDTO().name
+                        res.role = manager.toDTO().role
+                    }
+                    
+                    res.id = data.toDTO().id
+                    res.matchingId = data.toDTO().matchingId
+                    res.sendMessage = data.toDTO().sendMessage
+                    res.createAt = data.toDTO().createAt
+                    resChat.append(res)
                 }
             }
             
