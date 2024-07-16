@@ -66,15 +66,25 @@ struct ChatsController: RouteCollection {
     // アプデチェック
     @Sendable
     func updateCheck(req: Request) async throws -> [ChatsDTO] {
-        let update: requestUpdateStateDTO? = try req.content.decode(requestUpdateStateDTO.self)
+        let update: requestUpdateStateDTO = try req.content.decode(requestUpdateStateDTO.self)
         
-        if let update = update {
-            let chats = try await Chats.query(on: req.db).filter(\.$matchingId == update.matchingId ?? "").filter(\.$createAt > update.checkDate ?? Date() ).all()
+        guard let matchingId = UUID(uuidString: update.matchingId ?? "") else {
+            throw Abort(.badRequest, reason: "input data is invalid.")
+        }
+        
+        if let updateMatchingId = update.matchingId,
+           let updateCheckDate = update.checkDate {
+            let chats = try await Chats.query(on: req.db)
+                .filter(\.$matchingId == updateMatchingId)
+                .filter(\.$createAt > updateCheckDate)
+                .all()
             
             var resChat: [ChatsDTO] = []
             
             for data in chats {
-                resChat.append(data.toDTO())
+                if data.createAt?.description != updateCheckDate.description {
+                    resChat.append(data.toDTO())
+                }
             }
             
             return resChat
@@ -95,4 +105,14 @@ struct requestChatMesseageDTO: Content {
 struct requestUpdateStateDTO: Content {
     var matchingId: String?
     var checkDate: Date?
+}
+
+struct responseChatDTO: Content {
+    var id: UUID?
+    var matchingId: String?
+    var sendUserId: String?
+    var sendMessage: String?
+    var createAt: Date?
+    var userName: String?
+    var role: String?
 }
