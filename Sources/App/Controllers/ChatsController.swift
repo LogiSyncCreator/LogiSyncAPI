@@ -33,7 +33,7 @@ struct ChatsController: RouteCollection {
             throw Abort(.badRequest, reason: "matching id is invalid.")
         }
         
-        guard (try await Matching.find(matchingId, on: req.db)) != nil else {
+        guard let matching = try await Matching.find(matchingId, on: req.db) else {
             throw Abort(.notFound, reason: "matching is not found.")
         }
         
@@ -43,6 +43,12 @@ struct ChatsController: RouteCollection {
         if let chat = chat {
             let newChat = ChatsDTO(matchingId: chat.matchingId, sendUserId: chat.sendUserId, sendMessage: chat.sendMessage).toModel()
             try await newChat.save(on: req.db)
+            
+            let url = URI(stringLiteral: "http://\(EnvData().ip):\(EnvData().port)/push/chatupdate/\(matchingId)/\(matching.shipper)/\(matching.driver)")
+            let push = try await req.client.get(url)
+            
+//            print(push)
+            
             return newChat.toDTO()
         }  else {
             throw Abort(.badRequest, reason: "chat data is invalid.")

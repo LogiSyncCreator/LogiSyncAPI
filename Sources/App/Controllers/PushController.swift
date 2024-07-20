@@ -23,6 +23,7 @@ struct PushController: RouteCollection {
         todos.delete("deletetoken", ":token", use: self.delete)
         todos.get("pushmsg", ":receiverId", ":message", use: self.messagePush)
         todos.get("updatestatus", ":shipperId", ":managerId", use: self.sendCreateStatusNotification)
+        todos.get("chatupdate",":matchingId",":shipperId",":driverId", use: self.updateChat)
     }
 
     @Sendable
@@ -375,6 +376,13 @@ struct PushController: RouteCollection {
         
         
         req.logger.info("Found \(tokens.count) tokens")
+        
+        if tokens.isEmpty {
+            let userTokens = try await DeviceToken.query(on: req.db).group(.or) { group in
+                group.filter(\.$userId == hostUser.userId)
+            }.all()
+            tokens.formUnion(userTokens.map { $0.toDTO() })
+        }
 
         if let hostUserName = hostUser.toDTO().name,
            let hostUserId = hostUser.toDTO().userId {
@@ -500,6 +508,55 @@ struct PushController: RouteCollection {
                 }
             } catch {
                 print("token is invalid: \(String(describing: token.toDTO().token))")
+            }
+        }
+        
+        return .ok
+    }
+    
+    @Sendable
+    func updateChat(req: Request) async throws -> HTTPStatus {
+        let matchingId = req.parameters.get("matchingId")
+        let shipperId = req.parameters.get("shipperId")
+        let driverId = req.parameters.get("driverId")
+        
+        
+//        guard let shipper = try await User.query(on: req.db).filter(\.$userId == shipperId ?? "").first() else {
+//            throw Abort(.notFound, reason: "Not found user.")
+//        }
+//        
+//        guard let driver = try await User.query(on: req.db).filter(\.$userId == driverId ?? "").first() else {
+//            throw Abort(.notFound, reason: "Not found user.")
+//        }
+        
+        let tokens = try await DeviceToken.query(on: req.db).group(.or) { group in
+            group.filter(\.$userId == shipperId ?? "")
+                .filter(\.$userId == driverId ?? "")
+        }.all()
+        
+        let payload = CommonPayload(userId: "", status: matchingId ?? "", mode: "chat")
+        let back = APNSBackgroundNotification(expiration: .immediately, topic: "com.nanaSoft.LogiSync", payload: payload)
+        
+        
+        let alert = APNSAlertNotification(
+            alert: .init(
+                title: .raw("LogiSync"),
+                body: .raw("")
+            ),
+            expiration: .immediately,
+            priority: .immediately,
+            topic: "com.nanaSoft.LogiSync",
+            payload: payload,
+            sound: .default
+        )
+        
+        for token in tokens {
+            do {
+                if !token.token.isEmpty {
+                    try await req.apns.client.sendBackgroundNotification(back, deviceToken: token.token)
+                }
+            } catch {
+                print("APIERR: トークンがない")
             }
         }
         
