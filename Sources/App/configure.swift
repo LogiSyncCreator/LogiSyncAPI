@@ -45,10 +45,10 @@ app.databases.use(DatabaseConfigurationFactory.sqlite(.file("db.sqlite")), as: .
     app.migrations.add(CreateNowStatus())
     app.migrations.add(CreateMatching())
     app.migrations.add(CreateChatRoom())
-    app.migrations.add(CreateChat())
     app.migrations.add(CreateLocation())
     app.migrations.add(CreateThumbnail())
     app.migrations.add(CreateDeviceToken())
+    app.migrations.add(CreateChats_2())
     // register routes
     try routes(app)
 }
